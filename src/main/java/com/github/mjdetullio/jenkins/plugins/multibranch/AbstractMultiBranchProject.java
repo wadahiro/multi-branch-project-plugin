@@ -111,6 +111,7 @@ import net.sf.json.JSONObject;
 
 /**
  * @author Matthew DeTullio
+ * @author Hiroyuki Wada
  */
 public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B> & TopLevelItem, B extends AbstractBuild<P, B>>
 		extends AbstractProject<P, B>
@@ -124,6 +125,8 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 	private static final String DEFAULT_SYNC_SPEC = "H/5 * * * *";
 
 	private boolean allowAnonymousSync;
+
+	private boolean disableProjectDeletion;
 
 	protected volatile SCMSource scmSource;
 
@@ -646,6 +649,17 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 		save();
 	}
 
+	@SuppressWarnings(UNUSED)
+	public boolean isDisableProjectDeletion() {
+		return disableProjectDeletion;
+	}
+
+	@SuppressWarnings(UNUSED)
+	public void setDisableProjectDeletion(boolean b) throws IOException {
+		disableProjectDeletion = b;
+		save();
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -752,6 +766,7 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 		makeDisabled(req.getParameter("disable") != null);
 
 		allowAnonymousSync = req.getSubmittedForm().has("allowAnonymousSync");
+		disableProjectDeletion = req.getSubmittedForm().has("disableProjectDeletion");
 
 		try {
 			JSONObject json = req.getSubmittedForm();
@@ -998,13 +1013,25 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 			Map.Entry<String, P> entry = iter.next();
 
 			if (!branches.containsKey(entry.getKey())) {
-				listener.getLogger().println(
-						"Deleting project for branch " + entry.getKey());
-				try {
-					iter.remove();
-					entry.getValue().delete();
-				} catch (Throwable e) {
-					e.printStackTrace(listener.fatalError(e.getMessage()));
+				if (!isDisableProjectDeletion()) {
+					listener.getLogger().println(
+							"Deleting project for branch " + entry.getKey());
+					try {
+						iter.remove();
+						entry.getValue().delete();
+					} catch (Throwable e) {
+						e.printStackTrace(listener.fatalError(e.getMessage()));
+					}
+				} else {
+					listener.getLogger().println(
+							"Disable project for branch " + entry.getKey());
+					entry.getValue().disable();
+				}
+			} else {
+				if (entry.getValue().isDisabled()) {
+					listener.getLogger().println(
+							"Enable project for branch " + entry.getKey());
+					entry.getValue().enable();
 				}
 			}
 		}
@@ -1012,6 +1039,9 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 		// Sync config for existing branch projects
 		XmlFile configFile = templateProject.getConfigFile();
 		for (P project : getSubProjects().values()) {
+			if (project.isDisabled()) {
+				continue;
+			}
 			listener.getLogger().println(
 					"Syncing configuration to project for branch "
 							+ project.getName());
