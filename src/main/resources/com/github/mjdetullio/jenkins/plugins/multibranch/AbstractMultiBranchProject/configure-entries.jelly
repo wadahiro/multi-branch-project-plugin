@@ -62,6 +62,10 @@ THE SOFTWARE.
 				title="${%Disable job for deleted branch}"
 				checked="${it.disableProjectDeletion}" />
 
+		<f:optionalBlock field="suppressTriggerNewBranchBuild"
+				title="${%Suppress trigger build after discovering new branches}"
+				checked="${it.suppressTriggerNewBranchBuild}" />
+
 		<j:set var="scms" value="${it.getSCMSourceDescriptors(true)}" />
 		<j:if test="${empty(scms)}">
 			<f:block>

@@ -160,6 +160,8 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 
 	private boolean disableProjectDeletion;
 
+	private boolean suppressTriggerNewBranchBuild;
+
 	private List<String> deletedBranches;
 
 	protected volatile SCMSource scmSource;
@@ -723,6 +725,17 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 		save();
 	}
 
+	@SuppressWarnings(UNUSED)
+	public boolean isSuppressTriggerNewBranchBuild() {
+		return suppressTriggerNewBranchBuild;
+	}
+
+	@SuppressWarnings(UNUSED)
+	public void setSuppressTriggerNewBranchBuild(boolean b) throws IOException {
+		suppressTriggerNewBranchBuild = b;
+		save();
+	}
+
 	/**
 	 * Stapler URL binding for creating views for our branch projects.  Unlike
 	 * normal views, this only requires permission to configure the project, not
@@ -847,6 +860,7 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 
 		allowAnonymousSync = req.getSubmittedForm().has("allowAnonymousSync");
 		disableProjectDeletion = req.getSubmittedForm().has("disableProjectDeletion");
+		suppressTriggerNewBranchBuild = req.getSubmittedForm().has("suppressTriggerNewBranchBuild");
 
 		try {
 			JSONObject json = req.getSubmittedForm();
@@ -1104,16 +1118,17 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 		Jenkins.getInstance().rebuildDependencyGraphAsync();
 
 		// Trigger build for new branches
-		// TODO make this optional
-		for (String branch : newBranches) {
-			listener.getLogger().println(
-					"Scheduling build for branch " + branch);
-			try {
-				P project = subProjects.get(branch);
-				project.scheduleBuild(
-						new SCMTrigger.SCMTriggerCause("New branch detected."));
-			} catch (Throwable e) {
-				e.printStackTrace(listener.fatalError(e.getMessage()));
+		if (!suppressTriggerNewBranchBuild) {
+			for (String branch : newBranches) {
+				listener.getLogger().println(
+						"Scheduling build for branch " + branch);
+				try {
+					P project = subProjects.get(branch);
+					project.scheduleBuild(
+							new SCMTrigger.SCMTriggerCause("New branch detected."));
+				} catch (Throwable e) {
+					e.printStackTrace(listener.fatalError(e.getMessage()));
+				}
 			}
 		}
 	}
