@@ -141,7 +141,7 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 
 	protected volatile boolean disabled;
 
-	private List<String> disabledSubProjects;
+	private PersistedList<String> disabledSubProjects;
 
 	protected transient P templateProject;
 
@@ -162,7 +162,7 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 
 	private boolean suppressTriggerNewBranchBuild;
 
-	private List<String> deletedBranches;
+	private PersistedList<String> deletedBranches;
 
 	protected volatile SCMSource scmSource;
 
@@ -327,10 +327,14 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 
 		if (disabledSubProjects == null) {
 			disabledSubProjects = new PersistedList<String>(this);
+		} else {
+			disabledSubProjects.setOwner(this);
 		}
 
 		if (deletedBranches == null) {
 			deletedBranches = new PersistedList<String>(this);
+		} else {
+			deletedBranches.setOwner(this);
 		}
 
 		if (views == null) {
