@@ -1018,7 +1018,7 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 		Map<String, SCMHead> branches = new HashMap<String, SCMHead>();
 		Set<String> newBranches = new HashSet<String>();
 		for (SCMHead head : heads) {
-			String branchName = head.getName();
+			String branchName = head.getName().replaceAll("_", "__").replaceAll("/", "_");
 			branches.put(branchName, head);
 
 			if (!subProjects.containsKey(branchName)) {
@@ -1085,6 +1085,9 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 				boolean wasDisabled = project.isDisabled();
 
 				configFile.unmarshal(project);
+
+				// Set branchName to displayName of subproject.
+				project.setDisplayName(branches.get(project.getName()).getName());
 
 				/*
 				 * Build new SCM with the URL and branch already set.
