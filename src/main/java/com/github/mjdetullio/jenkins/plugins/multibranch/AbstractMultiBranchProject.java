@@ -24,9 +24,12 @@
 package com.github.mjdetullio.jenkins.plugins.multibranch;
 
 import antlr.ANTLRException;
+
 import com.google.common.collect.ImmutableMap;
+
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
 import hudson.XmlFile;
@@ -79,6 +82,7 @@ import jenkins.scm.api.SCMSourceOwner;
 import jenkins.scm.impl.SingleSCMSource;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+
 import org.apache.commons.io.FileUtils;
 import org.jenkinsci.bytecode.AdaptField;
 import org.kohsuke.stapler.HttpRedirect;
@@ -91,6 +95,7 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
@@ -1085,6 +1090,14 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 			listener.getLogger().println(
 					"Syncing configuration to project for branch "
 							+ project.getName());
+
+			if (project.isInQueue() || project.isBuilding()) {
+				listener.getLogger().println("Skip syncing because '" + project.getName() + "' is in queue or is building now");
+				continue;
+			}
+
+			BulkChange bc = new BulkChange(project);
+
 			try {
 				boolean wasDisabled = project.isDisabled();
 
@@ -1113,8 +1126,13 @@ public abstract class AbstractMultiBranchProject<P extends AbstractProject<P, B>
 
 				//noinspection unchecked
 				project.onLoad(project.getParent(), project.getName());
+
+				// save
+				bc.commit();
 			} catch (Throwable e) {
 				e.printStackTrace(listener.fatalError(e.getMessage()));
+			} finally {
+				bc.abort();
 			}
 		}
 
